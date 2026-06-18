@@ -1,0 +1,59 @@
+// src/allocation/AllocationCalculator.ts
+
+import { ETFAsset, RebalanceSignal, PortfolioSummary } from './types';
+
+export class AllocationCalculator {
+  /**
+   * Calculates current allocations, drift, and precise trade amounts to restore target weights.
+   * @param assets Array of current ETF holdings and targets
+   * @param driftThreshold The minimum percentage drift to trigger a trade action (default 5% / 0.05)
+   */
+  public static calculateRebalance(
+    assets: ETFAsset[],
+    driftThreshold: number = 0.05
+  ): PortfolioSummary {
+    // 1. Calculate total portfolio value
+    const totalValue = assets.reduce((sum, asset) => sum + asset.currentValue, 0);
+
+    if (totalValue <= 0) {
+      throw new Error("Total portfolio value must be greater than zero.");
+    }
+
+    // 2. Validate that target allocations equal 100%
+    const totalTarget = assets.reduce((sum, asset) => sum + asset.targetAllocation, 0);
+    if (Math.abs(totalTarget - 1.0) > 0.0001) {
+      throw new Error(`Target allocations must sum to 1.0 (100%). Found: ${totalTarget}`);
+    }
+
+    // 3. Process each asset and generate actionable signals
+    const signals: RebalanceSignal[] = assets.map((asset) => {
+      const currentAllocation = asset.currentValue / totalValue;
+      const drift = currentAllocation - asset.targetAllocation; // Positive = overweight, Negative = underweight
+      
+      // Target value required to meet perfect allocation
+      const targetValue = totalValue * asset.targetAllocation;
+      const tradeAmount = targetValue - asset.currentValue; // Positive = Buy, Negative = Sell
+
+      // Determine action based on the firm's drift threshold rule
+      let action: 'BUY' | 'SELL' | 'HOLD' = 'HOLD';
+      if (Math.abs(drift) >= driftThreshold) {
+        action = drift > 0 ? 'SELL' : 'BUY';
+      }
+
+      return {
+        ticker: asset.ticker.toUpperCase(),
+        assetClass: asset.assetClass,
+        currentAllocation: parseFloat(currentAllocation.toFixed(4)),
+        targetAllocation: asset.targetAllocation,
+        drift: parseFloat(drift.toFixed(4)),
+        action,
+        tradeAmount: parseFloat(tradeAmount.toFixed(2)),
+      };
+    });
+
+    return {
+      totalValue: parseFloat(totalValue.toFixed(2)),
+      signals,
+    };
+  }
+}
