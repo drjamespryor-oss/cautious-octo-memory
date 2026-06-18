@@ -1,0 +1,24 @@
+// src/allocation/types.ts
+
+export interface ETFAsset {
+  ticker: string;
+  name: string;
+  assetClass: 'Global Equity' | 'Fixed Income' | 'Alternatives';
+  currentValue: number;
+  targetAllocation: number; // Represented as a decimal (e.g., 0.60 for 60%)
+}
+
+export interface RebalanceSignal {
+  ticker: string;
+  assetClass: string;
+  currentAllocation: number;
+  targetAllocation: number;
+  drift: number;
+  action: 'BUY' | 'SELL' | 'HOLD';
+  tradeAmount: number;
+}
+
+export interface PortfolioSummary {
+  totalValue: number;
+  signals: RebalanceSignal[];
+}
